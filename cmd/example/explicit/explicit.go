@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 
-	beschema "github.com/starpia-forge/be-schema"
+	"github.com/starpia-forge/be-schema"
 )
 
 type Foo struct {
