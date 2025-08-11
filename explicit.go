@@ -106,7 +106,7 @@ func structToArray(v interface{}) ([]interface{}, error) {
 			continue
 		}
 
-		// If field is a struct, process recursively
+		// If a field is a struct, process recursively
 		if field.Kind() == reflect.Struct {
 			subArray, err := structToArray(field.Interface())
 			if err != nil {
@@ -155,7 +155,7 @@ func arrayToStruct(arr []interface{}, target interface{}) error {
 		// Get current array element
 		arrValue := arr[arrayIndex]
 
-		// If field is a struct
+		// If the field is a struct
 		if field.Kind() == reflect.Struct {
 			// Check if array data is a slice
 			if subArr, ok := arrValue.([]interface{}); ok {
@@ -167,7 +167,7 @@ func arrayToStruct(arr []interface{}, target interface{}) error {
 				return fmt.Errorf("expected array for struct field %s, got %T", fieldType.Name, arrValue)
 			}
 		} else {
-			// Set basic type field
+			// Set a basic type field
 			if err := setFieldValue(field, arrValue); err != nil {
 				return fmt.Errorf("failed to set field %s: %v", fieldType.Name, err)
 			}
@@ -201,7 +201,7 @@ func populateStructFromArray(structVal reflect.Value, arr []interface{}) error {
 				}
 			}
 		} else {
-			// Set basic type field
+			// Set a basic type field
 			if err := setFieldValue(field, arrValue); err != nil {
 				return fmt.Errorf("failed to set field %s: %v", structType.Field(i).Name, err)
 			}
@@ -211,7 +211,7 @@ func populateStructFromArray(structVal reflect.Value, arr []interface{}) error {
 	return nil
 }
 
-// setFieldValue is a helper function that sets a field value with appropriate type conversion.
+// setFieldValue is a helper function that sets a field value with an appropriate type conversion.
 // It handles type conversions between interface{} values and struct field types,
 // supporting string, numeric, and boolean types.
 func setFieldValue(field reflect.Value, value interface{}) error {
