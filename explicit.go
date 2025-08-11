@@ -8,64 +8,70 @@ import (
 	"strings"
 )
 
+// MarshalExplicitSchema converts a struct to a byte array following the explicit schema format.
+// It converts the struct to an array representation, marshals it to JSON,
+// and prepends size information in the format: "size\r\nJSON_data\r\n".
 func MarshalExplicitSchema[T any](v T) ([]byte, error) {
-	// 구조체를 배열로 변환
+	// Convert struct to array
 	arr, err := structToArray(v)
 	if err != nil {
 		return nil, err
 	}
 
-	// JSON으로 마셜링
+	// Marshal to JSON
 	jsonData, err := json.Marshal(arr)
 	if err != nil {
 		return nil, err
 	}
 
-	// 크기 정보와 함께 결합 (JSON 데이터 + \r\n 2바이트)
+	// Combine with size information (JSON data + \r\n 2 bytes)
 	size := len(jsonData) + 2
 	result := fmt.Sprintf("%d\r\n%s\r\n", size, string(jsonData))
 
 	return []byte(result), nil
 }
 
+// UnmarshalExplicitSchema parses byte data in an explicit schema format and converts it to the specified struct type.
+// The input data should be in the format: "size\r\nJSON_data\r\n".
+// It validates the size information and converts the JSON array back to the target struct.
 func UnmarshalExplicitSchema[T any](data []byte) (T, error) {
 	var result T
 
-	// 전체 데이터를 문자열로 변환
+	// Convert entire data to string
 	dataStr := string(data)
 
-	// \r\n으로 분할 (Windows 스타일 줄바꿈)
+	// Split by \r\n (Windows-style line breaks)
 	lines := strings.Split(dataStr, "\r\n")
 	if len(lines) < 2 {
-		// \n으로만 분할 시도 (Unix 스타일 줄바꿈)
+		// Try splitting by \n only (Unix-style line breaks)
 		lines = strings.Split(dataStr, "\n")
 		if len(lines) < 2 {
 			return result, fmt.Errorf("invalid data format: expected at least 2 lines")
 		}
 	}
 
-	// 첫 번째 줄에서 크기 정보 파싱
+	// Parse size information from the first line
 	expectedSize, err := strconv.Atoi(strings.TrimSpace(lines[0]))
 	if err != nil {
 		return result, fmt.Errorf("invalid size format: %v", err)
 	}
 
-	// 두 번째 줄에서 실제 JSON 데이터 파싱
+	// Parse actual JSON data from the second line
 	jsonData := strings.TrimSpace(lines[1])
 
-	// 실제 데이터 크기는 JSON 데이터 + \r\n (2바이트)
+	// Actual data size is JSON data + \r\n (2 bytes)
 	actualSize := len(jsonData) + 2
 	if actualSize != expectedSize {
 		return result, fmt.Errorf("data size mismatch: expected %d, got %d (JSON: %d + CRLF: 2)", expectedSize, actualSize, len(jsonData))
 	}
 
-	// JSON 배열로 언마셜링
+	// Unmarshal to JSON array
 	var arr []interface{}
 	if err := json.Unmarshal([]byte(jsonData), &arr); err != nil {
 		return result, fmt.Errorf("failed to unmarshal JSON: %v", err)
 	}
 
-	// 배열을 구조체로 변환
+	// Convert array to struct
 	if err := arrayToStruct(arr, &result); err != nil {
 		return result, err
 	}
@@ -73,12 +79,13 @@ func UnmarshalExplicitSchema[T any](data []byte) (T, error) {
 	return result, nil
 }
 
-// 구조체를 배열로 변환하는 헬퍼 함수
+// structToArray is a helper function that converts a struct to an array representation.
+// It recursively processes nested structs and handles unexported fields appropriately.
 func structToArray(v interface{}) ([]interface{}, error) {
 	val := reflect.ValueOf(v)
 	typ := reflect.TypeOf(v)
 
-	// 포인터인 경우 역참조
+	// Dereference if it's a pointer
 	if val.Kind() == reflect.Ptr {
 		val = val.Elem()
 		typ = typ.Elem()
@@ -94,12 +101,12 @@ func structToArray(v interface{}) ([]interface{}, error) {
 		field := val.Field(i)
 		fieldType := typ.Field(i)
 
-		// unexported 필드는 건너뛰기
+		// Skip unexported fields
 		if !field.CanInterface() {
 			continue
 		}
 
-		// 필드가 구조체인 경우 재귀적으로 처리
+		// If field is a struct, process recursively
 		if field.Kind() == reflect.Struct {
 			subArray, err := structToArray(field.Interface())
 			if err != nil {
@@ -114,7 +121,8 @@ func structToArray(v interface{}) ([]interface{}, error) {
 	return result, nil
 }
 
-// 배열을 구조체로 변환하는 헬퍼 함수
+// arrayToStruct is a helper function that converts an array to a struct.
+// The target parameter must be a pointer to the struct to be populated.
 func arrayToStruct(arr []interface{}, target interface{}) error {
 	val := reflect.ValueOf(target)
 	if val.Kind() != reflect.Ptr {
@@ -128,14 +136,14 @@ func arrayToStruct(arr []interface{}, target interface{}) error {
 		return fmt.Errorf("target must be a pointer to struct")
 	}
 
-	// 구조체의 필드들을 순회하면서 배열 데이터와 매핑
+	// Iterate through struct fields and map them with array data
 	arrayIndex := 0
 
 	for i := 0; i < val.NumField() && arrayIndex < len(arr); i++ {
 		field := val.Field(i)
 		fieldType := typ.Field(i)
 
-		// unexported 필드는 건너뛰기
+		// Skip unexported fields
 		if !field.CanSet() {
 			continue
 		}
@@ -144,14 +152,14 @@ func arrayToStruct(arr []interface{}, target interface{}) error {
 			break
 		}
 
-		// 현재 배열 요소 가져오기
+		// Get current array element
 		arrValue := arr[arrayIndex]
 
-		// 필드가 구조체인 경우
+		// If field is a struct
 		if field.Kind() == reflect.Struct {
-			// 배열 데이터가 슬라이스인지 확인
+			// Check if array data is a slice
 			if subArr, ok := arrValue.([]interface{}); ok {
-				// 구조체의 각 필드를 배열 요소와 매핑
+				// Map each field of the struct with array elements
 				if err := populateStructFromArray(field, subArr); err != nil {
 					return fmt.Errorf("failed to populate struct field %s: %v", fieldType.Name, err)
 				}
@@ -159,7 +167,7 @@ func arrayToStruct(arr []interface{}, target interface{}) error {
 				return fmt.Errorf("expected array for struct field %s, got %T", fieldType.Name, arrValue)
 			}
 		} else {
-			// 기본 타입 필드 설정
+			// Set basic type field
 			if err := setFieldValue(field, arrValue); err != nil {
 				return fmt.Errorf("failed to set field %s: %v", fieldType.Name, err)
 			}
@@ -171,7 +179,8 @@ func arrayToStruct(arr []interface{}, target interface{}) error {
 	return nil
 }
 
-// 배열에서 구조체 필드들을 채우는 헬퍼 함수
+// populateStructFromArray is a helper function that populates struct fields from an array.
+// It handles nested structs recursively and converts array elements to appropriate field types.
 func populateStructFromArray(structVal reflect.Value, arr []interface{}) error {
 	structType := structVal.Type()
 
@@ -185,14 +194,14 @@ func populateStructFromArray(structVal reflect.Value, arr []interface{}) error {
 		arrValue := arr[i]
 
 		if field.Kind() == reflect.Struct {
-			// 중첩 구조체인 경우
+			// For nested structs
 			if subArr, ok := arrValue.([]interface{}); ok {
 				if err := populateStructFromArray(field, subArr); err != nil {
 					return fmt.Errorf("failed to populate nested struct field %s: %v", structType.Field(i).Name, err)
 				}
 			}
 		} else {
-			// 기본 타입 필드 설정
+			// Set basic type field
 			if err := setFieldValue(field, arrValue); err != nil {
 				return fmt.Errorf("failed to set field %s: %v", structType.Field(i).Name, err)
 			}
@@ -202,22 +211,24 @@ func populateStructFromArray(structVal reflect.Value, arr []interface{}) error {
 	return nil
 }
 
-// 필드 값을 설정하는 헬퍼 함수
+// setFieldValue is a helper function that sets a field value with appropriate type conversion.
+// It handles type conversions between interface{} values and struct field types,
+// supporting string, numeric, and boolean types.
 func setFieldValue(field reflect.Value, value interface{}) error {
 	if value == nil {
-		return nil // nil 값은 무시
+		return nil // Ignore nil values
 	}
 
 	fieldType := field.Type()
 	valueType := reflect.TypeOf(value)
 
-	// 타입이 직접 일치하는 경우
+	// If types match directly
 	if valueType == fieldType {
 		field.Set(reflect.ValueOf(value))
 		return nil
 	}
 
-	// 타입 변환이 필요한 경우
+	// Type conversion is needed
 	switch fieldType.Kind() {
 	case reflect.String:
 		if str, ok := value.(string); ok {
