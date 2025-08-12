@@ -28,5 +28,11 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	log.Printf("%+v\n", entity)
+	log.Printf("Unmarshal: %+v\n", entity)
+
+	data, err = beschema.MarshalExplicitSchema(entity)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	log.Printf("Marshal: %+v\n", string(data))
 }
