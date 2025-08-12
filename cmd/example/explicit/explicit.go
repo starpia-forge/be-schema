@@ -6,19 +6,25 @@ import (
 	"github.com/starpia-forge/be-schema"
 )
 
-type Foo struct {
-	Bar Bar
+type Entity struct {
+	Sub1 SubEntity1 `beschema:"1"`
+	Sub2 SubEntity2 `beschema:"3"`
 }
 
-type Bar struct {
-	Field1 string
-	Field2 string
+type SubEntity1 struct {
+	Field1 string `beschema:"1"`
+	Field2 string `beschema:"2"`
+}
+
+type SubEntity2 struct {
+	Field1 string `beschema:"3"`
+	Field2 string `beschema:"4"`
 }
 
 func main() {
 	data := []byte("89\r\n[[\"test1\",\"test2\",\"[[null]]\",null,null,null,\"test3\"],[\"test4\",1],[\"test5\",2,\"test6\",3]]\r\n")
 
-	f, err := beschema.UnmarshalExplicitSchema[Foo](data)
+	f, err := beschema.UnmarshalExplicitSchema[Entity](data)
 	if err != nil {
 		log.Fatalln(err)
 	}
