@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -79,8 +80,16 @@ func UnmarshalExplicitSchema[T any](data []byte) (T, error) {
 	return result, nil
 }
 
+// fieldInfo holds information about a struct field and its beschema tag
+type fieldInfo struct {
+	field     reflect.Value
+	fieldType reflect.StructField
+	tagValue  int
+}
+
 // structToArray is a helper function that converts a struct to an array representation.
 // It recursively processes nested structs and handles unexported fields appropriately.
+// Fields are ordered by their beschema tag values.
 func structToArray(v interface{}) ([]interface{}, error) {
 	val := reflect.ValueOf(v)
 	typ := reflect.TypeOf(v)
@@ -95,8 +104,8 @@ func structToArray(v interface{}) ([]interface{}, error) {
 		return nil, fmt.Errorf("expected struct, got %s", val.Kind())
 	}
 
-	var result []interface{}
-
+	// Collect field information with beschema tags
+	var fields []fieldInfo
 	for i := 0; i < val.NumField(); i++ {
 		field := val.Field(i)
 		fieldType := typ.Field(i)
@@ -106,15 +115,38 @@ func structToArray(v interface{}) ([]interface{}, error) {
 			continue
 		}
 
+		// Parse beschema tag
+		tagValue := i + 1 // default to field order (1-based)
+		if tag := fieldType.Tag.Get("beschema"); tag != "" {
+			if parsedTag, err := strconv.Atoi(tag); err == nil {
+				tagValue = parsedTag
+			}
+		}
+
+		fields = append(fields, fieldInfo{
+			field:     field,
+			fieldType: fieldType,
+			tagValue:  tagValue,
+		})
+	}
+
+	// Sort fields by beschema tag value
+	sort.Slice(fields, func(i, j int) bool {
+		return fields[i].tagValue < fields[j].tagValue
+	})
+
+	var result []interface{}
+
+	for _, fieldInfo := range fields {
 		// If a field is a struct, process recursively
-		if field.Kind() == reflect.Struct {
-			subArray, err := structToArray(field.Interface())
+		if fieldInfo.field.Kind() == reflect.Struct {
+			subArray, err := structToArray(fieldInfo.field.Interface())
 			if err != nil {
-				return nil, fmt.Errorf("failed to convert field %s: %v", fieldType.Name, err)
+				return nil, fmt.Errorf("failed to convert field %s: %v", fieldInfo.fieldType.Name, err)
 			}
 			result = append(result, subArray)
 		} else {
-			result = append(result, field.Interface())
+			result = append(result, fieldInfo.field.Interface())
 		}
 	}
 
@@ -123,6 +155,7 @@ func structToArray(v interface{}) ([]interface{}, error) {
 
 // arrayToStruct is a helper function that converts an array to a struct.
 // The target parameter must be a pointer to the struct to be populated.
+// Fields are mapped based on their beschema tag values.
 func arrayToStruct(arr []interface{}, target interface{}) error {
 	val := reflect.ValueOf(target)
 	if val.Kind() != reflect.Ptr {
@@ -136,10 +169,9 @@ func arrayToStruct(arr []interface{}, target interface{}) error {
 		return fmt.Errorf("target must be a pointer to struct")
 	}
 
-	// Iterate through struct fields and map them with array data
-	arrayIndex := 0
-
-	for i := 0; i < val.NumField() && arrayIndex < len(arr); i++ {
+	// Collect field information with beschema tags
+	var fields []fieldInfo
+	for i := 0; i < val.NumField(); i++ {
 		field := val.Field(i)
 		fieldType := typ.Field(i)
 
@@ -148,32 +180,52 @@ func arrayToStruct(arr []interface{}, target interface{}) error {
 			continue
 		}
 
-		if arrayIndex >= len(arr) {
-			break
+		// Parse beschema tag
+		tagValue := i + 1 // default to field order (1-based)
+		if tag := fieldType.Tag.Get("beschema"); tag != "" {
+			if parsedTag, err := strconv.Atoi(tag); err == nil {
+				tagValue = parsedTag
+			}
 		}
 
-		// Get current array element
+		fields = append(fields, fieldInfo{
+			field:     field,
+			fieldType: fieldType,
+			tagValue:  tagValue,
+		})
+	}
+
+	// Sort fields by beschema tag value
+	sort.Slice(fields, func(i, j int) bool {
+		return fields[i].tagValue < fields[j].tagValue
+	})
+
+	// Map array elements to fields based on tag values (1-based to 0-based conversion)
+	for _, fieldInfo := range fields {
+		arrayIndex := fieldInfo.tagValue - 1 // Convert 1-based tag to 0-based array index
+		if arrayIndex < 0 || arrayIndex >= len(arr) {
+			continue // Skip if tag value is out of bounds
+		}
+
 		arrValue := arr[arrayIndex]
 
 		// If the field is a struct
-		if field.Kind() == reflect.Struct {
+		if fieldInfo.field.Kind() == reflect.Struct {
 			// Check if array data is a slice
 			if subArr, ok := arrValue.([]interface{}); ok {
 				// Map each field of the struct with array elements
-				if err := populateStructFromArray(field, subArr); err != nil {
-					return fmt.Errorf("failed to populate struct field %s: %v", fieldType.Name, err)
+				if err := populateStructFromArray(fieldInfo.field, subArr); err != nil {
+					return fmt.Errorf("failed to populate struct field %s: %v", fieldInfo.fieldType.Name, err)
 				}
 			} else {
-				return fmt.Errorf("expected array for struct field %s, got %T", fieldType.Name, arrValue)
+				return fmt.Errorf("expected array for struct field %s, got %T", fieldInfo.fieldType.Name, arrValue)
 			}
 		} else {
 			// Set a basic type field
-			if err := setFieldValue(field, arrValue); err != nil {
-				return fmt.Errorf("failed to set field %s: %v", fieldType.Name, err)
+			if err := setFieldValue(fieldInfo.field, arrValue); err != nil {
+				return fmt.Errorf("failed to set field %s: %v", fieldInfo.fieldType.Name, err)
 			}
 		}
-
-		arrayIndex++
 	}
 
 	return nil
@@ -181,29 +233,60 @@ func arrayToStruct(arr []interface{}, target interface{}) error {
 
 // populateStructFromArray is a helper function that populates struct fields from an array.
 // It handles nested structs recursively and converts array elements to appropriate field types.
+// Fields are mapped based on their beschema tag values.
 func populateStructFromArray(structVal reflect.Value, arr []interface{}) error {
 	structType := structVal.Type()
 
-	for i := 0; i < structVal.NumField() && i < len(arr); i++ {
+	// Collect field information with beschema tags
+	var fields []fieldInfo
+	for i := 0; i < structVal.NumField(); i++ {
 		field := structVal.Field(i)
+		fieldType := structType.Field(i)
 
 		if !field.CanSet() {
 			continue
 		}
 
-		arrValue := arr[i]
+		// Parse beschema tag
+		tagValue := i + 1 // default to field order (1-based)
+		if tag := fieldType.Tag.Get("beschema"); tag != "" {
+			if parsedTag, err := strconv.Atoi(tag); err == nil {
+				tagValue = parsedTag
+			}
+		}
 
-		if field.Kind() == reflect.Struct {
+		fields = append(fields, fieldInfo{
+			field:     field,
+			fieldType: fieldType,
+			tagValue:  tagValue,
+		})
+	}
+
+	// Sort fields by beschema tag value
+	sort.Slice(fields, func(i, j int) bool {
+		return fields[i].tagValue < fields[j].tagValue
+	})
+
+	// Map array elements to fields based on tag values (1-based to 0-based conversion)
+	for _, fieldInfo := range fields {
+		arrayIndex := fieldInfo.tagValue - 1 // Convert 1-based tag to 0-based array index
+		if arrayIndex < 0 || arrayIndex >= len(arr) {
+			continue // Skip if tag value is out of bounds
+		}
+
+		arrValue := arr[arrayIndex]
+
+		if fieldInfo.field.Kind() == reflect.Struct {
 			// For nested structs
 			if subArr, ok := arrValue.([]interface{}); ok {
-				if err := populateStructFromArray(field, subArr); err != nil {
-					return fmt.Errorf("failed to populate nested struct field %s: %v", structType.Field(i).Name, err)
+				if err := populateStructFromArray(fieldInfo.field, subArr); err != nil {
+					return fmt.Errorf("failed to populate nested struct field %s: %v", fieldInfo.fieldType.Name, err)
 				}
 			}
 		} else {
 			// Set a basic type field
-			if err := setFieldValue(field, arrValue); err != nil {
-				return fmt.Errorf("failed to set field %s: %v", structType.Field(i).Name, err)
+			if err := setFieldValue(fieldInfo.field, arrValue); err != nil {
+				return fmt.Errorf("failed to set field %s: %v", fieldInfo.fieldType.Name, err)
 			}
 		}
 	}
