@@ -59,11 +59,11 @@ func TestParseStreamWithSingleSchema(t *testing.T) {
 	}
 
 	schema := stream.Schemas[0]
-	if schema[1] != "test1" {
-		t.Errorf("Expected schema[1] = 'test1', got %v", schema[1])
+	if schema[0] != "test1" {
+		t.Errorf("Expected schema[0] = 'test1', got %v", schema[0])
 	}
-	if schema[2] != "test2" {
-		t.Errorf("Expected schema[2] = 'test2', got %v", schema[2])
+	if schema[1] != "test2" {
+		t.Errorf("Expected schema[1] = 'test2', got %v", schema[1])
 	}
 }
 
@@ -87,21 +87,21 @@ func TestParseStreamWithMultipleSchemas(t *testing.T) {
 
 	// Check first schema
 	schema1 := stream.Schemas[0]
-	if schema1[1] != "test1" {
-		t.Errorf("Expected schema1[1] = 'test1', got %v", schema1[1])
+	if schema1[0] != "test1" {
+		t.Errorf("Expected schema1[0] = 'test1', got %v", schema1[0])
 	}
-	if schema1[2] != "test2" {
-		t.Errorf("Expected schema1[2] = 'test2', got %v", schema1[2])
+	if schema1[1] != "test2" {
+		t.Errorf("Expected schema1[1] = 'test2', got %v", schema1[1])
 	}
 
 	// Check second schema
 	schema2 := stream.Schemas[1]
-	if schema2[1] != "data1" {
-		t.Errorf("Expected schema2[1] = 'data1', got %v", schema2[1])
+	if schema2[0] != "data1" {
+		t.Errorf("Expected schema2[0] = 'data1', got %v", schema2[0])
 	}
 	// JSON unmarshaling converts numbers to float64
-	if schema2[2] != float64(42) {
-		t.Errorf("Expected schema2[2] = 42.0, got %v", schema2[2])
+	if schema2[1] != float64(42) {
+		t.Errorf("Expected schema2[1] = 42.0, got %v", schema2[1])
 	}
 }
 
@@ -190,8 +190,8 @@ func TestMarshalStreamToByteArray(t *testing.T) {
 	stream := &Stream{
 		MagicByte: []byte(")]}'"),
 		Schemas: []ImplicitSchema{
-			{1: "test1", 2: "test2"},
-			{1: "data1", 2: 42},
+			{"test1", "test2"},
+			{"data1", 42},
 		},
 	}
 

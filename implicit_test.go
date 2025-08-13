@@ -5,11 +5,8 @@ import (
 )
 
 func TestMarshalImplicitSchema(t *testing.T) {
-	// Test marshaling a simple map[int]any to explicit schema format
-	data := map[int]any{
-		1: "test1",
-		2: "test2",
-	}
+	// Test marshaling a simple slice to explicit schema format
+	data := ImplicitSchema{"test1", "test2"}
 
 	// This should fail initially since MarshalImplicitSchema doesn't exist yet
 	result, err := MarshalImplicitSchema(data)
@@ -44,12 +41,12 @@ func TestUnmarshalImplicitSchema(t *testing.T) {
 		t.Fatalf("Expected non-nil result")
 	}
 
-	// Check that we get back the original data with correct keys
-	if result[1] != "test1" {
-		t.Errorf("Expected result[1] = 'test1', got %v", result[1])
+	// Check that we get back the original data with correct indices
+	if result[0] != "test1" {
+		t.Errorf("Expected result[0] = 'test1', got %v", result[0])
 	}
-	if result[2] != "test2" {
-		t.Errorf("Expected result[2] = 'test2', got %v", result[2])
+	if result[1] != "test2" {
+		t.Errorf("Expected result[1] = 'test2', got %v", result[1])
 	}
 
 	// Verify we have exactly 2 elements
@@ -60,12 +57,7 @@ func TestUnmarshalImplicitSchema(t *testing.T) {
 
 func TestMarshalUnmarshalImplicitSchemaRoundTrip(t *testing.T) {
 	// Test complete marshal/unmarshal cycle
-	original := ImplicitSchema{
-		1: "test1",
-		2: "test2",
-		3: 42,
-		4: true,
-	}
+	original := ImplicitSchema{"test1", "test2", 42, true}
 
 	// Marshal to bytes
 	data, err := MarshalImplicitSchema(original)
@@ -84,24 +76,26 @@ func TestMarshalUnmarshalImplicitSchemaRoundTrip(t *testing.T) {
 		t.Errorf("Expected %d elements, got %d", len(original), len(result))
 	}
 
-	for key, expectedValue := range original {
-		if actualValue, exists := result[key]; !exists {
-			t.Errorf("Expected key %d to exist in result", key)
-		} else {
-			// Handle JSON type conversion: numbers become float64
-			switch expected := expectedValue.(type) {
-			case int:
-				if actual, ok := actualValue.(float64); ok {
-					if float64(expected) != actual {
-						t.Errorf("Expected result[%d] = %v, got %v", key, float64(expected), actual)
-					}
-				} else {
-					t.Errorf("Expected result[%d] to be float64, got %T", key, actualValue)
+	for i, expectedValue := range original {
+		if i >= len(result) {
+			t.Errorf("Expected index %d to exist in result", i)
+			continue
+		}
+		actualValue := result[i]
+
+		// Handle JSON type conversion: numbers become float64
+		switch expected := expectedValue.(type) {
+		case int:
+			if actual, ok := actualValue.(float64); ok {
+				if float64(expected) != actual {
+					t.Errorf("Expected result[%d] = %v, got %v", i, float64(expected), actual)
 				}
-			default:
-				if actualValue != expectedValue {
-					t.Errorf("Expected result[%d] = %v, got %v", key, expectedValue, actualValue)
-				}
+			} else {
+				t.Errorf("Expected result[%d] to be float64, got %T", i, actualValue)
+			}
+		default:
+			if actualValue != expectedValue {
+				t.Errorf("Expected result[%d] = %v, got %v", i, expectedValue, actualValue)
 			}
 		}
 	}

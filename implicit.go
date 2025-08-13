@@ -3,29 +3,15 @@ package beschema
 import (
 	"encoding/json"
 	"fmt"
-	"sort"
 	"strconv"
 	"strings"
 )
 
-type ImplicitSchema map[int]any
+type ImplicitSchema []any
 
 func MarshalImplicitSchema(schema ImplicitSchema) ([]byte, error) {
-	// Convert map to ordered array based on keys
-	keys := make([]int, 0, len(schema))
-	for k := range schema {
-		keys = append(keys, k)
-	}
-	sort.Ints(keys)
-
-	// Build array in key order
-	arr := make([]interface{}, len(keys))
-	for i, key := range keys {
-		arr[i] = schema[key]
-	}
-
-	// Marshal to JSON
-	jsonData, err := json.Marshal(arr)
+	// Marshal slice directly to JSON
+	jsonData, err := json.Marshal(schema)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal to JSON: %v", err)
 	}
@@ -68,16 +54,10 @@ func UnmarshalImplicitSchema(data []byte) (ImplicitSchema, error) {
 		return nil, fmt.Errorf("data size mismatch: expected %d, got %d", expectedSize, actualSize)
 	}
 
-	// Unmarshal to JSON array
-	var arr []interface{}
-	if err := json.Unmarshal([]byte(jsonData), &arr); err != nil {
+	// Unmarshal to JSON array and return as ImplicitSchema
+	var result ImplicitSchema
+	if err := json.Unmarshal([]byte(jsonData), &result); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal JSON: %v", err)
-	}
-
-	// Convert array to map with sequential keys starting from 1
-	result := make(ImplicitSchema)
-	for i, value := range arr {
-		result[i+1] = value
 	}
 
 	return result, nil
