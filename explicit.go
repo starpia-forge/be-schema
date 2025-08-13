@@ -35,9 +35,25 @@ func MarshalExplicitSchema[T any](v T) ([]byte, error) {
 // UnmarshalExplicitSchema parses byte data in an explicit schema format and converts it to the specified struct type.
 // The input data should be in the format: "size\r\nJSON_data\r\n".
 // It validates the size information and converts the JSON array back to the target struct.
-func UnmarshalExplicitSchema[T any](data []byte) (T, error) {
+func UnmarshalExplicitSchema[T any](data []byte, withHeader bool) (T, error) {
 	var result T
 
+	if !withHeader {
+		// Handle data without header - direct JSON parsing
+		var arr []interface{}
+		if err := json.Unmarshal(data, &arr); err != nil {
+			return result, fmt.Errorf("failed to unmarshal JSON: %v", err)
+		}
+
+		// Convert array to struct
+		if err := arrayToStruct(arr, &result); err != nil {
+			return result, err
+		}
+
+		return result, nil
+	}
+
+	// Handle data with header (original behavior)
 	// Convert entire data to string
 	dataStr := string(data)
 

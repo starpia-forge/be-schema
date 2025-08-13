@@ -25,7 +25,17 @@ func MarshalImplicitSchema(schema ImplicitSchema) ([]byte, error) {
 	return []byte(result), nil
 }
 
-func UnmarshalImplicitSchema(data []byte) (ImplicitSchema, error) {
+func UnmarshalImplicitSchema(data []byte, withHeader bool) (ImplicitSchema, error) {
+	if !withHeader {
+		// Handle data without header - direct JSON parsing
+		var result ImplicitSchema
+		if err := json.Unmarshal(data, &result); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal JSON: %v", err)
+		}
+		return result, nil
+	}
+
+	// Handle data with header (original behavior)
 	// Convert data to string
 	dataStr := string(data)
 

@@ -43,7 +43,7 @@ func UnmarshalImplicitStream(data []byte) (*Stream, error) {
 		// Parse size + data pair
 		if i+1 < len(lines) {
 			sizeData := fmt.Sprintf("%s%s%s%s", lines[i], lineEnding, lines[i+1], lineEnding)
-			schema, err := UnmarshalImplicitSchema([]byte(sizeData))
+			schema, err := UnmarshalImplicitSchema([]byte(sizeData), true)
 			if err != nil {
 				return nil, fmt.Errorf("failed to parse schema at line %d: %v", i, err)
 			}

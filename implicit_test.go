@@ -31,7 +31,7 @@ func TestUnmarshalImplicitSchema(t *testing.T) {
 	data := []byte("19\r\n[\"test1\",\"test2\"]\r\n")
 
 	// This should fail initially since UnmarshalImplicitSchema is not implemented
-	result, err := UnmarshalImplicitSchema(data)
+	result, err := UnmarshalImplicitSchema(data, true)
 	if err != nil {
 		t.Fatalf("UnmarshalImplicitSchema failed: %v", err)
 	}
@@ -66,7 +66,7 @@ func TestMarshalUnmarshalImplicitSchemaRoundTrip(t *testing.T) {
 	}
 
 	// Unmarshal back to map
-	result, err := UnmarshalImplicitSchema(data)
+	result, err := UnmarshalImplicitSchema(data, true)
 	if err != nil {
 		t.Fatalf("UnmarshalImplicitSchema failed: %v", err)
 	}
@@ -97,6 +97,56 @@ func TestMarshalUnmarshalImplicitSchemaRoundTrip(t *testing.T) {
 			if actualValue != expectedValue {
 				t.Errorf("Expected result[%d] = %v, got %v", i, expectedValue, actualValue)
 			}
+		}
+	}
+}
+
+func TestUnmarshalImplicitSchemaWithHeader(t *testing.T) {
+	// Test unmarshaling with header (current behavior)
+	data := []byte("19\r\n[\"test1\",\"test2\"]\r\n")
+
+	result, err := UnmarshalImplicitSchema(data, true)
+	if err != nil {
+		t.Fatalf("UnmarshalImplicitSchema with header failed: %v", err)
+	}
+
+	if len(result) != 2 {
+		t.Errorf("Expected 2 elements, got %d", len(result))
+	}
+	if result[0] != "test1" {
+		t.Errorf("Expected result[0] = 'test1', got %v", result[0])
+	}
+	if result[1] != "test2" {
+		t.Errorf("Expected result[1] = 'test2', got %v", result[1])
+	}
+}
+
+func TestUnmarshalImplicitSchemaWithoutHeader(t *testing.T) {
+	// Test unmarshaling without header (new behavior)
+	data := []byte("[[\"test1\",\"test2\",\"[[null]]\",null,null,null,\"test3\"],[\"test4\",1],[\"test5\",2,\"test6\",3]]")
+
+	result, err := UnmarshalImplicitSchema(data, false)
+	if err != nil {
+		t.Fatalf("UnmarshalImplicitSchema without header failed: %v", err)
+	}
+
+	if len(result) != 3 {
+		t.Errorf("Expected 3 elements, got %d", len(result))
+	}
+
+	// Check first element is an array
+	firstElement, ok := result[0].([]interface{})
+	if !ok {
+		t.Errorf("Expected result[0] to be array, got %T", result[0])
+	} else {
+		if len(firstElement) != 7 {
+			t.Errorf("Expected first element to have 7 items, got %d", len(firstElement))
+		}
+		if firstElement[0] != "test1" {
+			t.Errorf("Expected first element[0] = 'test1', got %v", firstElement[0])
+		}
+		if firstElement[6] != "test3" {
+			t.Errorf("Expected first element[6] = 'test3', got %v", firstElement[6])
 		}
 	}
 }

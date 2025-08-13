@@ -154,7 +154,7 @@ func TestMarshalUnmarshalExplicitSchemaWithBeschemaTag(t *testing.T) {
 	}
 
 	// Unmarshal back to struct
-	result, err := UnmarshalExplicitSchema[OuterStruct](data)
+	result, err := UnmarshalExplicitSchema[OuterStruct](data, true)
 	if err != nil {
 		t.Fatalf("UnmarshalExplicitSchema failed: %v", err)
 	}
@@ -385,5 +385,60 @@ func TestMarshalExplicitSchemaWithGaps(t *testing.T) {
 		} else {
 			t.Errorf("Expected Sub2 to be an array, got %T", arr[2])
 		}
+	}
+}
+
+func TestUnmarshalExplicitSchemaWithHeader(t *testing.T) {
+	// Test unmarshaling with header (current behavior)
+	type TestStruct struct {
+		Field1 string `beschema:"1"`
+		Field2 string `beschema:"2"`
+	}
+
+	data := []byte("19\r\n[\"test1\",\"test2\"]\r\n")
+
+	result, err := UnmarshalExplicitSchema[TestStruct](data, true)
+	if err != nil {
+		t.Fatalf("UnmarshalExplicitSchema with header failed: %v", err)
+	}
+
+	if result.Field1 != "test1" {
+		t.Errorf("Expected Field1 = 'test1', got %v", result.Field1)
+	}
+	if result.Field2 != "test2" {
+		t.Errorf("Expected Field2 = 'test2', got %v", result.Field2)
+	}
+}
+
+func TestUnmarshalExplicitSchemaWithoutHeader(t *testing.T) {
+	// Test unmarshaling without header (new behavior)
+	type TestStruct struct {
+		Field1 []interface{} `beschema:"1"`
+		Field2 []interface{} `beschema:"2"`
+		Field3 []interface{} `beschema:"3"`
+	}
+
+	data := []byte("[[\"test1\",\"test2\",\"[[null]]\",null,null,null,\"test3\"],[\"test4\",1],[\"test5\",2,\"test6\",3]]")
+
+	result, err := UnmarshalExplicitSchema[TestStruct](data, false)
+	if err != nil {
+		t.Fatalf("UnmarshalExplicitSchema without header failed: %v", err)
+	}
+
+	if len(result.Field1) != 7 {
+		t.Errorf("Expected Field1 to have 7 elements, got %d", len(result.Field1))
+	}
+	if result.Field1[0] != "test1" {
+		t.Errorf("Expected Field1[0] = 'test1', got %v", result.Field1[0])
+	}
+	if result.Field1[6] != "test3" {
+		t.Errorf("Expected Field1[6] = 'test3', got %v", result.Field1[6])
+	}
+
+	if len(result.Field2) != 2 {
+		t.Errorf("Expected Field2 to have 2 elements, got %d", len(result.Field2))
+	}
+	if result.Field2[0] != "test4" {
+		t.Errorf("Expected Field2[0] = 'test4', got %v", result.Field2[0])
 	}
 }
