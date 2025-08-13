@@ -135,18 +135,36 @@ func structToArray(v interface{}) ([]interface{}, error) {
 		return fields[i].tagValue < fields[j].tagValue
 	})
 
-	var result []interface{}
-
+	// Find the maximum tag value to determine array size
+	maxTagValue := 0
 	for _, fieldInfo := range fields {
+		if fieldInfo.tagValue > maxTagValue {
+			maxTagValue = fieldInfo.tagValue
+		}
+	}
+
+	// Create result array with proper size, initialized with nulls
+	result := make([]interface{}, maxTagValue)
+	for i := range result {
+		result[i] = nil
+	}
+
+	// Place each field at its correct index (tagValue - 1)
+	for _, fieldInfo := range fields {
+		arrayIndex := fieldInfo.tagValue - 1 // Convert 1-based tag to 0-based array index
+		if arrayIndex < 0 || arrayIndex >= len(result) {
+			continue // Skip if tag value is out of bounds
+		}
+
 		// If a field is a struct, process recursively
 		if fieldInfo.field.Kind() == reflect.Struct {
 			subArray, err := structToArray(fieldInfo.field.Interface())
 			if err != nil {
 				return nil, fmt.Errorf("failed to convert field %s: %v", fieldInfo.fieldType.Name, err)
 			}
-			result = append(result, subArray)
+			result[arrayIndex] = subArray
 		} else {
-			result = append(result, fieldInfo.field.Interface())
+			result[arrayIndex] = fieldInfo.field.Interface()
 		}
 	}
 
