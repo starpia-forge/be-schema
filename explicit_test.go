@@ -314,3 +314,76 @@ func TestModifiedBeschemaTagsIssue(t *testing.T) {
 		t.Errorf("Expected Sub2.Field2 = '3', got '%s' (this indicates the bug - not using beschema tags for nested field mapping)", result.Sub2.Field2)
 	}
 }
+
+// Test for marshaling with gaps in beschema indices
+func TestMarshalExplicitSchemaWithGaps(t *testing.T) {
+	// This test reproduces the marshaling issue described in the GitHub issue:
+	// When marshaling a struct with beschema tags "1" and "3",
+	// the result should include null for the missing index 2
+	// Expected: [["test1","test2"],null,["test6","3"]]
+	// Actual: [["test1","test2"],["test6","3"]]
+
+	entity := Entity{
+		Sub1: SubEntity1{
+			Field1: "test1",
+			Field2: "test2",
+		},
+		Sub2: SubEntity2{
+			Field1: "test6",
+			Field2: "3",
+		},
+	}
+
+	// Marshal the entity
+	data, err := MarshalExplicitSchema(entity)
+	if err != nil {
+		t.Fatalf("MarshalExplicitSchema failed: %v", err)
+	}
+
+	// Parse the marshaled data to extract the JSON array
+	dataStr := string(data)
+	lines := strings.Split(dataStr, "\r\n")
+	if len(lines) < 2 {
+		lines = strings.Split(dataStr, "\n")
+	}
+	jsonData := strings.TrimSpace(lines[1])
+
+	// Unmarshal the JSON to check the structure
+	var arr []interface{}
+	if err := json.Unmarshal([]byte(jsonData), &arr); err != nil {
+		t.Fatalf("Failed to unmarshal JSON: %v", err)
+	}
+
+	// The array should have 3 elements: [sub1_array, null, sub2_array]
+	// because Sub1 has beschema:"1" (index 0) and Sub2 has beschema:"3" (index 2)
+	if len(arr) != 3 {
+		t.Errorf("Expected array length 3, got %d. Array: %v", len(arr), arr)
+	}
+
+	// Check that index 1 (corresponding to beschema:"2") is null
+	if len(arr) >= 2 && arr[1] != nil {
+		t.Errorf("Expected null at index 1 for missing beschema tag, got %v", arr[1])
+	}
+
+	// Check that Sub1 data is at index 0
+	if len(arr) >= 1 {
+		if sub1Arr, ok := arr[0].([]interface{}); ok {
+			if len(sub1Arr) != 2 || sub1Arr[0] != "test1" || sub1Arr[1] != "test2" {
+				t.Errorf("Expected Sub1 array [\"test1\",\"test2\"], got %v", sub1Arr)
+			}
+		} else {
+			t.Errorf("Expected Sub1 to be an array, got %T", arr[0])
+		}
+	}
+
+	// Check that Sub2 data is at index 2
+	if len(arr) >= 3 {
+		if sub2Arr, ok := arr[2].([]interface{}); ok {
+			if len(sub2Arr) != 2 || sub2Arr[0] != "test6" || sub2Arr[1] != "3" {
+				t.Errorf("Expected Sub2 array [\"test6\",\"3\"], got %v", sub2Arr)
+			}
+		} else {
+			t.Errorf("Expected Sub2 to be an array, got %T", arr[2])
+		}
+	}
+}
