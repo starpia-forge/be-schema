@@ -27,78 +27,35 @@ go get github.com/starpia-forge/be-schema
 
 ## Usage
 
-### Basic Example
+### Examples
 
-```go
-package main
+This library provides three different ways to handle schema marshaling/unmarshaling:
 
-import (
-    "fmt"
-    "github.com/starpia-forge/be-schema"
-)
+#### 1. Explicit Schema
+For structured data with predefined struct types and `beschema` tags:
+- See: [`cmd/example/explicit/explicit.go`](cmd/example/explicit/explicit.go)
 
-type Person struct {
-    Name string `beschema:"1"`
-    Age  int    `beschema:"2"`
-    City string `beschema:"3"`
-}
+#### 2. Implicit Schema  
+For dynamic data without predefined struct types:
+- See: [`cmd/example/implicit/implicit.go`](cmd/example/implicit/implicit.go)
 
-func main() {
-    person := Person{
-        Name: "John Doe",
-        Age:  30,
-        City: "New York",
-    }
+#### 3. Implicit Stream
+For streaming data with implicit schema:
+- See: [`cmd/example/implicit_stream/implicit_stream.go`](cmd/example/implicit_stream/implicit_stream.go)
 
-    // Marshal to JSON with explicit schema ordering
-    data, err := beschema.MarshalExplicitSchema(person)
-    if err != nil {
-        panic(err)
-    }
-    fmt.Printf("JSON: %s\n", data)
+### Running Examples
 
-    // Unmarshal back to struct
-    var result Person
-    result, err = beschema.UnmarshalExplicitSchema[Person](data)
-    if err != nil {
-        panic(err)
-    }
-    fmt.Printf("Struct: %+v\n", result)
-}
-```
+You can run any of the examples using:
 
-### Nested Structs
+```bash
+# Explicit schema example
+go run cmd/example/explicit/explicit.go
 
-```go
-type Address struct {
-    Street string `beschema:"1"`
-    City   string `beschema:"2"`
-}
+# Implicit schema example  
+go run cmd/example/implicit/implicit.go
 
-type Person struct {
-    Name    string  `beschema:"1"`
-    Address Address `beschema:"2"`
-    Age     int     `beschema:"3"`
-}
-
-func main() {
-    person := Person{
-        Name: "Jane Doe",
-        Address: Address{
-            Street: "123 Main St",
-            City:   "Boston",
-        },
-        Age: 25,
-    }
-
-    data, err := beschema.MarshalExplicitSchema(person)
-    if err != nil {
-        panic(err)
-    }
-    
-    // Output: [["Jane Doe", ["123 Main St", "Boston"], 25]]
-    fmt.Printf("JSON: %s\n", data)
-}
+# Implicit stream example
+go run cmd/example/implicit_stream/implicit_stream.go
 ```
 
 ## API Reference

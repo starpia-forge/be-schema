@@ -27,78 +27,35 @@ go get github.com/starpia-forge/be-schema
 
 ## 사용법
 
-### 기본 예제
+### 예제
 
-```go
-package main
+이 라이브러리는 스키마 마샬링/언마샬링을 처리하는 세 가지 방법을 제공합니다:
 
-import (
-    "fmt"
-    "github.com/starpia-forge/be-schema"
-)
+#### 1. 명시적 스키마 (Explicit Schema)
+미리 정의된 구조체 타입과 `beschema` 태그를 사용하는 구조화된 데이터용:
+- 참조: [`cmd/example/explicit/explicit.go`](cmd/example/explicit/explicit.go)
 
-type Person struct {
-    Name string `beschema:"1"`
-    Age  int    `beschema:"2"`
-    City string `beschema:"3"`
-}
+#### 2. 암시적 스키마 (Implicit Schema)  
+미리 정의된 구조체 타입 없이 동적 데이터용:
+- 참조: [`cmd/example/implicit/implicit.go`](cmd/example/implicit/implicit.go)
 
-func main() {
-    person := Person{
-        Name: "홍길동",
-        Age:  30,
-        City: "서울",
-    }
+#### 3. 암시적 스트림 (Implicit Stream)
+암시적 스키마를 사용하는 스트리밍 데이터용:
+- 참조: [`cmd/example/implicit_stream/implicit_stream.go`](cmd/example/implicit_stream/implicit_stream.go)
 
-    // 명시적 스키마 순서로 JSON 마샬링
-    data, err := beschema.MarshalExplicitSchema(person)
-    if err != nil {
-        panic(err)
-    }
-    fmt.Printf("JSON: %s\n", data)
+### 예제 실행
 
-    // 구조체로 다시 언마샬링
-    var result Person
-    result, err = beschema.UnmarshalExplicitSchema[Person](data)
-    if err != nil {
-        panic(err)
-    }
-    fmt.Printf("구조체: %+v\n", result)
-}
-```
+다음 명령어로 예제를 실행할 수 있습니다:
 
-### 중첩된 구조체
+```bash
+# 명시적 스키마 예제
+go run cmd/example/explicit/explicit.go
 
-```go
-type Address struct {
-    Street string `beschema:"1"`
-    City   string `beschema:"2"`
-}
+# 암시적 스키마 예제  
+go run cmd/example/implicit/implicit.go
 
-type Person struct {
-    Name    string  `beschema:"1"`
-    Address Address `beschema:"2"`
-    Age     int     `beschema:"3"`
-}
-
-func main() {
-    person := Person{
-        Name: "김영희",
-        Address: Address{
-            Street: "강남대로 123",
-            City:   "부산",
-        },
-        Age: 25,
-    }
-
-    data, err := beschema.MarshalExplicitSchema(person)
-    if err != nil {
-        panic(err)
-    }
-    
-    // 출력: [["김영희", ["강남대로 123", "부산"], 25]]
-    fmt.Printf("JSON: %s\n", data)
-}
+# 암시적 스트림 예제
+go run cmd/example/implicit_stream/implicit_stream.go
 ```
 
 ## API 참조
