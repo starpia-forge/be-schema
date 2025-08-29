@@ -9,6 +9,7 @@ import (
 
 type ImplicitSchema []any
 
+// MarshalImplicitSchema serializes an ImplicitSchema into a formatted byte slice with size header and JSON content.
 func MarshalImplicitSchema(schema ImplicitSchema) ([]byte, error) {
 	// Marshal slice directly to JSON
 	jsonData, err := json.Marshal(schema)
@@ -25,6 +26,11 @@ func MarshalImplicitSchema(schema ImplicitSchema) ([]byte, error) {
 	return []byte(result), nil
 }
 
+// UnmarshalImplicitSchema parses the byte data into an ImplicitSchema,
+// with optional support for data header interpretation.
+// If `withHeader` is true, the data format must include a size header followed by JSON content;
+// otherwise, direct parsing occurs.
+// Returns the parsed ImplicitSchema or an error if the input data is invalid or unmarshalling fails.
 func UnmarshalImplicitSchema(data []byte, withHeader bool) (ImplicitSchema, error) {
 	if !withHeader {
 		// Handle data without header - direct JSON parsing
