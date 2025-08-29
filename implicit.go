@@ -7,6 +7,8 @@ import (
 	"strings"
 )
 
+// ImplicitSchema represents a slice of arbitrary values,
+// allowing heterogeneous data types in the collection.
 type ImplicitSchema []any
 
 // MarshalImplicitSchema serializes an ImplicitSchema into a formatted byte slice with size header and JSON content.
