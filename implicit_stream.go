@@ -5,11 +5,16 @@ import (
 	"strings"
 )
 
+// Stream represents a structured data stream containing a magic byte and multiple implicit schemas.
 type Stream struct {
 	MagicByte []byte
 	Schemas   []ImplicitSchema
 }
 
+// UnmarshalImplicitStream parses a byte slice into a Stream object containing a magic byte and multiple schemas.
+// It requires at least three lines in the input data and supports both Windows (\r\n) and Unix (\n) line endings.
+// The first line represents the magic byte, and later lines contain schema data in size + JSON pair format.
+// Returns a Stream object on success or an error if the input format is invalid or schema unmarshalling fails.
 func UnmarshalImplicitStream(data []byte) (*Stream, error) {
 	// Convert data to string
 	dataStr := string(data)
@@ -60,6 +65,11 @@ func UnmarshalImplicitStream(data []byte) (*Stream, error) {
 	}, nil
 }
 
+// MarshalImplicitStream serializes a Stream object into
+// a formatted byte slice with a magic byte and JSON-encoded schemas.
+// It starts with the Stream's magic byte followed by
+// an empty line and appends each schema formatted as size and JSON data.
+// Returns a byte slice on success or an error if input stream is nil or schema serialization fails.
 func MarshalImplicitStream(stream *Stream) ([]byte, error) {
 	if stream == nil {
 		return nil, fmt.Errorf("stream cannot be nil")
