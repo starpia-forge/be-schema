@@ -12,18 +12,22 @@ import (
 type ImplicitSchema []any
 
 // MarshalImplicitSchema serializes an ImplicitSchema into a formatted byte slice with size header and JSON content.
-func MarshalImplicitSchema(schema ImplicitSchema) ([]byte, error) {
+func MarshalImplicitSchema(schema ImplicitSchema, withHeader bool) ([]byte, error) {
 	// Marshal slice directly to JSON
 	jsonData, err := json.Marshal(schema)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal to JSON: %v", err)
 	}
 
-	// Calculate size (JSON data + \r\n)
-	size := len(jsonData) + 2
-
-	// Format as "size\r\nJSON_data\r\n"
-	result := fmt.Sprintf("%d\r\n%s\r\n", size, string(jsonData))
+	result := ""
+	if withHeader {
+		// Calculate size (JSON data + \r\n)
+		size := len(jsonData) + 2
+		// Format as "size\r\nJSON_data\r\n"
+		result = fmt.Sprintf("%d\r\n%s\r\n", size, string(jsonData))
+	} else {
+		result = fmt.Sprintf("%s\r\n", string(jsonData))
+	}
 
 	return []byte(result), nil
 }
