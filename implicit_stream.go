@@ -80,7 +80,7 @@ func MarshalImplicitStream(stream *Stream) ([]byte, error) {
 
 	// Marshal each schema and append to the result
 	for _, schema := range stream.Schemas {
-		schemaData, err := MarshalImplicitSchema(schema)
+		schemaData, err := MarshalImplicitSchema(schema, true)
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal schema: %v", err)
 		}
