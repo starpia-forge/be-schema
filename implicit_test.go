@@ -9,7 +9,7 @@ func TestMarshalImplicitSchema(t *testing.T) {
 	data := ImplicitSchema{"test1", "test2"}
 
 	// This should fail initially since MarshalImplicitSchema doesn't exist yet
-	result, err := MarshalImplicitSchema(data)
+	result, err := MarshalImplicitSchema(data, true)
 	if err != nil {
 		t.Fatalf("MarshalImplicitSchema failed: %v", err)
 	}
@@ -60,7 +60,7 @@ func TestMarshalUnmarshalImplicitSchemaRoundTrip(t *testing.T) {
 	original := ImplicitSchema{"test1", "test2", 42, true}
 
 	// Marshal to bytes
-	data, err := MarshalImplicitSchema(original)
+	data, err := MarshalImplicitSchema(original, true)
 	if err != nil {
 		t.Fatalf("MarshalImplicitSchema failed: %v", err)
 	}
